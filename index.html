@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111b21">
+  <title>Echo Chat</title>
+</head>
+
+<body>
+
+  <!-- ================= LOGIN ================= -->
+
+  <div id="loginScreen" class="login-screen">
+
+    <div class="login-card">
+
+      <div class="login-logo">
+        <span>💬</span>
+      </div>
+
+      <h1>Echo Chat</h1>
+
+      <p class="login-subtitle">
+        Simple. Fast. Private messaging.
+      </p>
+
+      <button id="googleLogin" class="google-login">
+        <span class="google-icon">G</span>
+        Continue with Google
+      </button>
+
+      <div class="captcha-box">
+        <div class="captcha-check">✓</div>
+        <div>
+          <strong>Protected by reCAPTCHA</strong>
+          <small>Privacy · Terms</small>
+        </div>
+      </div>
+
+      <p class="login-note">
+        By continuing, you agree to the Echo Chat terms.
+      </p>
+
+    </div>
+
+  </div>
+
+
+  <!-- ================= APP ================= -->
+
+  <div id="app" class="app hidden">
+
+    <!-- CHAT SIDEBAR -->
+
+    <aside class="sidebar">
+
+      <header class="sidebar-header">
+
+        <div class="profile">
+
+          <div class="avatar" id="myAvatar">
+            O
+          </div>
+
+          <div>
+            <strong id="myName">User</strong>
+            <span>Online</span>
+          </div>
+
+        </div>
+
+        <div class="header-buttons">
+
+          <button id="newChatBtn" title="New chat">
+            ＋
+          </button>
+
+          <button id="settingsBtn" title="Settings">
+            ⚙
+          </button>
+
+        </div>
+
+      </header>
+
+
+      <!-- SEARCH -->
+
+      <div class="search-box">
+
+        <span>🔍</span>
+
+        <input
+          id="searchInput"
+          type="text"
+          placeholder="Search or start new chat"
+        >
+
+      </div>
+
+
+      <!-- CHAT LIST -->
+
+      <div id="chatList" class="chat-list">
+
+        <div
+          class="chat-item active"
+          data-name="Alex"
+          data-chat="alex"
+        >
+
+          <div class="chat-avatar">
+            A
+            <span class="online-dot"></span>
+          </div>
+
+          <div class="chat-info">
+
+            <div class="chat-top">
+              <strong>Alex</strong>
+              <time>10:42 AM</time>
+            </div>
+
+            <div class="chat-bottom">
+              <span>Hey! How are you?</span>
+              <b class="unread">2</b>
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div
+          class="chat-item"
+          data-name="Sam"
+          data-chat="sam"
+        >
+
+          <div class="chat-avatar">
+            S
+          </div>
+
+          <div class="chat-info">
+
+            <div class="chat-top">
+              <strong>Sam</strong>
+              <time>9:31 AM</time>
+            </div>
+
+            <div class="chat-bottom">
+              <span>See you tomorrow!</span>
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div
+          class="chat-item"
+          data-name="Study Group"
+          data-chat="study"
+        >
+
+          <div class="chat-avatar group-avatar">
+            👥
+          </div>
+
+          <div class="chat-info">
+
+            <div class="chat-top">
+              <strong>Study Group</strong>
+              <time>Yesterday</time>
+            </div>
+
+            <div class="chat-bottom">
+              <span>Riya: Check the homework</span>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </aside>
+
+
+    <!-- ================= CHAT ================= -->
+
+    <main class="chat-window">
+
+      <!-- CHAT HEADER -->
+
+      <header class="chat-header">
+
+        <button id="backBtn" class="back-btn">
+          ‹
+        </button>
+
+        <div class="current-avatar" id="currentAvatar">
+          A
+        </div>
+
+        <div class="current-user">
+
+          <strong id="currentName">
+            Alex
+          </strong>
+
+          <span id="currentStatus">
+            online
+          </span>
+
+        </div>
+
+        <div class="chat-actions">
+
+          <button title="Search">
+            🔍
+          </button>
+
+          <button title="More">
+            ⋮
+          </button>
+
+        </div>
+
+      </header>
+
+
+      <!-- MESSAGES -->
+
+      <section
+        id="messages"
+        class="messages"
+      >
+
+        <div class="date-divider">
+          <span>Today</span>
+        </div>
+
+
+        <div class="message received">
+
+          <div class="bubble">
+            Hey! 👋
+            <span class="message-time">
+              10:40 AM
+            </span>
+          </div>
+
+        </div>
+
+
+        <div class="message sent">
+
+          <div class="bubble">
+            Hey Alex! How are you?
+            <span class="message-time">
+              10:41 AM ✓✓
+            </span>
+          </div>
+
+        </div>
+
+
+        <div class="message received">
+
+          <div class="bubble">
+            I'm great! What are you working on?
+            <span class="message-time">
+              10:42 AM
+            </span>
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- COMPOSER -->
+
+      <footer class="composer">
+
+        <button
+          id="emojiBtn"
+          class="composer-btn"
+          title="Emoji"
+        >
+          😊
+        </button>
+
+        <button
+          id="attachBtn"
+          class="composer-btn"
+          title="Attach"
+        >
+          📎
+        </button>
+
+        <input
+          id="messageInput"
+          type="text"
+          placeholder="Type a message"
+          autocomplete="off"
+        >
+
+        <button
+          id="voiceBtn"
+          class="composer-btn voice"
+          title="Voice message"
+        >
+          🎙️
+        </button>
+
+        <button
+          id="sendBtn"
+          class="send-btn"
+          title="Send"
+        >
+          ➤
+        </button>
+
+        <input
+          id="fileInput"
+          type="file"
+          hidden
+        >
+
+      </footer>
+
+    </main>
+
+  </div>
+
+
+  <script type="module" src="/src/main.js"></script>
+
+</body>
+</html>
