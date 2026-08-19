@@ -1,3 +1,9 @@
+import {
+  doc,
+  setDoc,
+  serverTimestamp
+} from "firebase/firestore";
+
 
 import {
   collection,
@@ -92,10 +98,19 @@ googleLogin.addEventListener("click", async () => {
 // CHECK LOGIN STATE
 // ============================================
 
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
 
   if (user) {
-
+await setDoc(
+  doc(db, "users", user.uid),
+  {
+    name: user.displayName || "User",
+    email: user.email || "",
+    photo: user.photoURL || "",
+    lastSeen: serverTimestamp()
+  },
+  { merge: true }
+);
     // User is logged in
 
     loginScreen.classList.add("hidden");
