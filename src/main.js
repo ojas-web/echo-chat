@@ -11,9 +11,12 @@ import {
   query,
   orderBy,
   onSnapshot,
-  serverTimestamp
+  serverTimestamp,
+  doc,
+  setDoc,
+  getDocs,
+  where
 } from "firebase/firestore";
-
 import "./style.css";
 
 
