@@ -1011,3 +1011,108 @@ body {
 .friend-chat-item {
   cursor: pointer;
 }
+/* =========================================
+   ADD FRIEND BUTTON
+========================================= */
+
+.friend-search-panel {
+  padding: 8px;
+  border-radius: 12px;
+}
+
+.friend-search-panel input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 13px;
+  border: 1px solid rgba(128, 128, 128, 0.25);
+  border-radius: 10px;
+  outline: none;
+  background: rgba(128, 128, 128, 0.08);
+  color: inherit;
+  font-size: 14px;
+}
+
+.friend-search-panel input:focus {
+  border-color: #25d366;
+}
+
+.friend-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  margin-top: 6px;
+  border-radius: 10px;
+  background: rgba(128, 128, 128, 0.08);
+}
+
+.friend-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.friend-info div {
+  min-width: 0;
+}
+
+.friend-info strong,
+.friend-info small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.friend-info small {
+  opacity: 0.6;
+  font-size: 12px;
+}
+
+.friend-avatar {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #25d366;
+}
+
+.add-friend-btn {
+  border: none;
+  outline: none;
+  background: #25d366;
+  color: white;
+  padding: 8px 15px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease,
+              opacity 0.15s ease;
+  flex-shrink: 0;
+}
+
+.add-friend-btn:hover {
+  transform: scale(1.05);
+}
+
+.add-friend-btn:active {
+  transform: scale(0.96);
+}
+
+.add-friend-btn:disabled {
+  background: #6b7280;
+  cursor: default;
+  transform: none;
+  opacity: 0.8;
+}
+
+.no-users {
+  padding: 15px;
+  text-align: center;
+  opacity: 0.55;
+  font-size: 13px;
+}
