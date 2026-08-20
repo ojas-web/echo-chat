@@ -1,11 +1,4 @@
 import {
-  doc,
-  setDoc
-  
-} from "firebase/firestore";
-
-
-import {
   collection,
   addDoc,
   query,
@@ -521,6 +514,172 @@ onSnapshot(messagesQuery, (snapshot) => {
 
   scrollMessages();
 });
+
+const findFriendsBtn =
+  document.getElementById("findFriendsBtn");
+
+const friendSearchPanel =
+  document.getElementById("friendSearchPanel");
+
+const friendSearchInput =
+  document.getElementById("friendSearchInput");
+
+const friendSearchResults =
+  document.getElementById("friendSearchResults");
+
+
+findFriendsBtn.addEventListener("click", () => {
+
+  friendSearchPanel.classList.toggle("hidden");
+
+  if (!friendSearchPanel.classList.contains("hidden")) {
+    friendSearchInput.focus();
+  }
+
+});
+
+
+friendSearchInput.addEventListener("input", async () => {
+
+  const search =
+    friendSearchInput.value.trim().toLowerCase();
+
+  friendSearchResults.innerHTML = "";
+
+  if (!search) return;
+
+  try {
+
+    const usersRef = collection(db, "users");
+
+    const snapshot = await getDocs(usersRef);
+
+    snapshot.forEach((userDoc) => {
+
+      const user = userDoc.data();
+
+      if (
+        userDoc.id === auth.currentUser.uid
+      ) {
+        return;
+      }
+
+      const email =
+        (user.email || "").toLowerCase();
+
+      const name =
+        (user.name || "").toLowerCase();
+
+      if (
+        email.includes(search) ||
+        name.includes(search)
+      ) {
+
+        const result =
+          document.createElement("div");
+
+        result.className =
+          "friend-result";
+
+        result.innerHTML = `
+          <div class="friend-info">
+
+            <img
+              src="${user.photo || ""}"
+              class="friend-avatar"
+              onerror="this.style.display='none'"
+            >
+
+            <div>
+              <strong>
+                ${escapeHTML(user.name || "User")}
+              </strong>
+
+              <small>
+                ${escapeHTML(user.email || "")}
+              </small>
+            </div>
+
+          </div>
+
+          <button class="add-friend-btn">
+            Add
+          </button>
+        `;
+
+        result
+          .querySelector(".add-friend-btn")
+          .addEventListener("click", () => {
+
+            sendFriendRequest(
+              userDoc.id,
+              user
+            );
+
+          });
+
+        friendSearchResults.appendChild(result);
+
+      }
+
+    });
+
+  } catch (error) {
+
+    console.error(
+      "User search failed:",
+      error
+    );
+
+  }
+
+});
+async function sendFriendRequest(
+  targetUserId,
+  targetUser
+) {
+
+  if (!auth.currentUser) return;
+
+  try {
+
+    await addDoc(
+      collection(db, "friendRequests"),
+      {
+        from: auth.currentUser.uid,
+        fromName:
+          auth.currentUser.displayName || "User",
+        fromEmail:
+          auth.currentUser.email || "",
+        fromPhoto:
+          auth.currentUser.photoURL || "",
+
+        to: targetUserId,
+
+        status: "pending",
+
+        createdAt: serverTimestamp()
+      }
+    );
+
+    alert(
+      `Friend request sent to ${targetUser.name}!`
+    );
+
+  } catch (error) {
+
+    console.error(
+      "Friend request failed:",
+      error
+    );
+
+    alert(
+      "Could not send friend request."
+    );
+
+  }
+
+}
 console.log(
   "💬 Echo Chat + Firebase Authentication loaded!"
 );
