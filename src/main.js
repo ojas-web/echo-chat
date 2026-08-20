@@ -811,3 +811,487 @@ async function sendFriendRequest(
 console.log(
   "💬 Echo Chat + Firebase Authentication loaded!"
 );
+
+// ============================================
+// FRIEND REQUESTS
+// ============================================
+
+const friendRequestsBtn =
+  document.getElementById("friendRequestsBtn");
+
+const friendRequestsPanel =
+  document.getElementById("friendRequestsPanel");
+
+const friendRequestsList =
+  document.getElementById("friendRequestsList");
+
+const friendRequestCount =
+  document.getElementById("friendRequestCount");
+
+
+// Open / close requests
+
+friendRequestsBtn.addEventListener("click", () => {
+
+  friendRequestsPanel.classList.toggle("hidden");
+
+});
+
+
+// ============================================
+// REAL-TIME FRIEND REQUESTS
+// ============================================
+
+function listenForFriendRequests() {
+
+  if (!auth.currentUser) return;
+
+  const requestsQuery = query(
+    collection(db, "friendRequests"),
+    where("to", "==", auth.currentUser.uid),
+    where("status", "==", "pending")
+  );
+
+  onSnapshot(requestsQuery, (snapshot) => {
+
+    friendRequestsList.innerHTML = "";
+
+    const count = snapshot.size;
+
+    // Notification number
+
+    friendRequestCount.textContent = count;
+
+    if (count > 0) {
+      friendRequestCount.classList.remove("hidden");
+    } else {
+      friendRequestCount.classList.add("hidden");
+    }
+
+
+    if (count === 0) {
+
+      friendRequestsList.innerHTML = `
+        <div class="no-requests">
+          No friend requests
+        </div>
+      `;
+
+      return;
+    }
+
+
+    snapshot.forEach((requestDoc) => {
+
+      const request =
+        requestDoc.data();
+
+      const item =
+        document.createElement("div");
+
+      item.className =
+        "friend-request";
+
+      const firstLetter =
+        (request.fromName || "U")
+          .charAt(0)
+          .toUpperCase();
+
+
+      item.innerHTML = `
+
+        ${
+          request.fromPhoto
+          ?
+          `<img
+            class="request-avatar"
+            src="${request.fromPhoto}"
+          >`
+          :
+          `<div class="request-avatar">
+            ${firstLetter}
+          </div>`
+        }
+
+        <div class="request-info">
+
+          <strong>
+            ${escapeHTML(
+              request.fromName || "User"
+            )}
+          </strong>
+
+          <small>
+            wants to be your friend
+          </small>
+
+        </div>
+
+        <div class="request-buttons">
+
+          <button
+            class="accept-request"
+          >
+            ✓
+          </button>
+
+          <button
+            class="reject-request"
+          >
+            ✕
+          </button>
+
+        </div>
+      `;
+
+
+      // ACCEPT
+
+      item
+        .querySelector(".accept-request")
+        .addEventListener("click", async () => {
+
+          await acceptFriendRequest(
+            requestDoc.id,
+            request
+          );
+
+        });
+
+
+      // REJECT
+
+      item
+        .querySelector(".reject-request")
+        .addEventListener("click", async () => {
+
+          await rejectFriendRequest(
+            requestDoc.id
+          );
+
+        });
+
+
+      friendRequestsList
+        .appendChild(item);
+
+    });
+
+  });
+
+}
+
+
+// ============================================
+// ACCEPT FRIEND REQUEST
+// ============================================
+
+async function acceptFriendRequest(
+  requestId,
+  request
+) {
+
+  if (!auth.currentUser) return;
+
+  try {
+
+    const myUid =
+      auth.currentUser.uid;
+
+    const friendUid =
+      request.from;
+
+
+    // Create friendship for ME
+
+    await setDoc(
+      doc(
+        db,
+        "users",
+        myUid,
+        "friends",
+        friendUid
+      ),
+      {
+        uid: friendUid,
+        name: request.fromName || "User",
+        email: request.fromEmail || "",
+        photo: request.fromPhoto || "",
+        addedAt: serverTimestamp()
+      }
+    );
+
+
+    // Create friendship for FRIEND
+
+    await setDoc(
+      doc(
+        db,
+        "users",
+        friendUid,
+        "friends",
+        myUid
+      ),
+      {
+        uid: myUid,
+        name:
+          auth.currentUser.displayName ||
+          "User",
+        email:
+          auth.currentUser.email ||
+          "",
+        photo:
+          auth.currentUser.photoURL ||
+          "",
+        addedAt: serverTimestamp()
+      }
+    );
+
+
+    // Mark request accepted
+
+    await setDoc(
+      doc(
+        db,
+        "friendRequests",
+        requestId
+      ),
+      {
+        status: "accepted"
+      },
+      {
+        merge: true
+      }
+    );
+
+
+    alert(
+      `${request.fromName || "User"} is now your friend!`
+    );
+
+
+    loadFriends();
+
+  } catch (error) {
+
+    console.error(
+      "Accept friend request failed:",
+      error
+    );
+
+    alert(
+      "Could not accept friend request.\n\n" +
+      error.message
+    );
+
+  }
+
+}
+
+
+// ============================================
+// REJECT FRIEND REQUEST
+// ============================================
+
+async function rejectFriendRequest(
+  requestId
+) {
+
+  try {
+
+    await setDoc(
+      doc(
+        db,
+        "friendRequests",
+        requestId
+      ),
+      {
+        status: "rejected"
+      },
+      {
+        merge: true
+      }
+    );
+
+  } catch (error) {
+
+    console.error(
+      "Reject request failed:",
+      error
+    );
+
+  }
+
+}
+
+
+// ============================================
+// LOAD FRIENDS INTO SIDEBAR
+// ============================================
+
+function loadFriends() {
+
+  if (!auth.currentUser) return;
+
+  const friendsRef =
+    collection(
+      db,
+      "users",
+      auth.currentUser.uid,
+      "friends"
+    );
+
+  onSnapshot(
+    friendsRef,
+    (snapshot) => {
+
+      const chatList =
+        document.getElementById("chatList");
+
+      // Remove previously loaded friends
+
+      document
+        .querySelectorAll(".firebase-friend")
+        .forEach((element) => {
+          element.remove();
+        });
+
+
+      snapshot.forEach((friendDoc) => {
+
+        const friend =
+          friendDoc.data();
+
+        const item =
+          document.createElement("div");
+
+        item.className =
+          "chat-item firebase-friend";
+
+        item.dataset.name =
+          friend.name || "User";
+
+        item.dataset.uid =
+          friend.uid;
+
+
+        const firstLetter =
+          (friend.name || "U")
+            .charAt(0)
+            .toUpperCase();
+
+
+        item.innerHTML = `
+
+          ${
+            friend.photo
+            ?
+            `<img
+              class="chat-avatar"
+              src="${friend.photo}"
+            >`
+            :
+            `<div class="chat-avatar">
+              ${firstLetter}
+            </div>`
+          }
+
+          <div class="chat-info">
+
+            <div class="chat-top">
+
+              <strong>
+                ${escapeHTML(
+                  friend.name || "User"
+                )}
+              </strong>
+
+            </div>
+
+            <div class="chat-bottom">
+
+              <span>
+                Friend
+              </span>
+
+            </div>
+
+          </div>
+        `;
+
+
+        item.addEventListener(
+          "click",
+          () => {
+
+            document
+              .querySelectorAll(".chat-item")
+              .forEach((chat) => {
+                chat.classList.remove("active");
+              });
+
+            item.classList.add("active");
+
+            currentName.textContent =
+              friend.name || "User";
+
+            currentStatus.textContent =
+              "online";
+
+            if (friend.photo) {
+
+              currentAvatar.style.backgroundImage =
+                `url("${friend.photo}")`;
+
+              currentAvatar.style.backgroundSize =
+                "cover";
+
+              currentAvatar.textContent = "";
+
+            } else {
+
+              currentAvatar.style.backgroundImage =
+                "";
+
+              currentAvatar.textContent =
+                firstLetter;
+
+            }
+
+            if (window.innerWidth <= 800) {
+
+              app.classList.add(
+                "mobile-chat"
+              );
+
+            }
+
+          }
+        );
+
+
+        chatList.prepend(item);
+
+      });
+
+    }
+  );
+
+}
+
+
+// ============================================
+// START FRIEND SYSTEM AFTER LOGIN
+// ============================================
+
+onAuthStateChanged(auth, (user) => {
+
+  if (user) {
+
+    listenForFriendRequests();
+
+    loadFriends();
+
+  }
+
+});
