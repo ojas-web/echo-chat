@@ -717,24 +717,48 @@ async function sendFriendRequest(
   button
 ) {
 
-  if (!auth.currentUser) {
+  if (!auth.currentUser) return;
+
+  const currentUserId =
+    auth.currentUser.uid;
+
+  if (currentUserId === targetUserId) {
+    alert("You cannot add yourself.");
     return;
   }
 
-  // Prevent double clicking
   if (button) {
     button.disabled = true;
-    button.textContent = "Sending...";
+    button.textContent = "Checking...";
   }
 
   try {
 
+    // Check existing requests
+    const requestsQuery = query(
+      collection(db, "friendRequests"),
+      where("from", "==", currentUserId),
+      where("to", "==", targetUserId),
+      where("status", "==", "pending")
+    );
+
+    const existingRequests =
+      await getDocs(requestsQuery);
+
+    if (!existingRequests.empty) {
+
+      if (button) {
+        button.textContent = "Sent ✓";
+      }
+
+      return;
+    }
+
+    // Create request
     await addDoc(
       collection(db, "friendRequests"),
       {
-
-        from:
-          auth.currentUser.uid,
+        from: currentUserId,
 
         fromName:
           auth.currentUser.displayName ||
@@ -748,25 +772,21 @@ async function sendFriendRequest(
           auth.currentUser.photoURL ||
           "",
 
-        to:
-          targetUserId,
+        to: targetUserId,
 
-        status:
-          "pending",
+        status: "pending",
 
         createdAt:
           serverTimestamp()
-
       }
     );
 
     if (button) {
       button.textContent = "Sent ✓";
-      button.disabled = true;
     }
 
     console.log(
-      "Friend request sent:",
+      "Friend request sent to:",
       targetUser.email
     );
 
@@ -786,9 +806,7 @@ async function sendFriendRequest(
       "Could not send friend request.\n\n" +
       error.message
     );
-
   }
-
 }
 console.log(
   "💬 Echo Chat + Firebase Authentication loaded!"
