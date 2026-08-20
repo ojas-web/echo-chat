@@ -3,6 +3,7 @@ import { initializeApp } from "firebase/app";
 import {
   initializeAuth,
   browserLocalPersistence,
+  browserPopupRedirectResolver,
   GoogleAuthProvider
 } from "firebase/auth";
 
@@ -23,7 +24,8 @@ const app = initializeApp(firebaseConfig);
 
 // Initialize Authentication
 export const auth = initializeAuth(app, {
-  persistence: browserLocalPersistence
+  persistence: browserLocalPersistence,
+  popupRedirectResolver: browserPopupRedirectResolver
 });
 
 // Google login provider
