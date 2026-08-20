@@ -515,6 +515,10 @@ onSnapshot(messagesQuery, (snapshot) => {
   scrollMessages();
 });
 
+// ============================================
+// FIND FRIENDS
+// ============================================
+
 const findFriendsBtn =
   document.getElementById("findFriendsBtn");
 
@@ -528,142 +532,242 @@ const friendSearchResults =
   document.getElementById("friendSearchResults");
 
 
-findFriendsBtn.addEventListener("click", () => {
+if (findFriendsBtn) {
 
-  friendSearchPanel.classList.toggle("hidden");
+  findFriendsBtn.addEventListener("click", () => {
 
-  if (!friendSearchPanel.classList.contains("hidden")) {
-    friendSearchInput.focus();
-  }
+    friendSearchPanel.classList.toggle("hidden");
 
-});
+    if (
+      !friendSearchPanel.classList.contains("hidden")
+    ) {
+      friendSearchInput.focus();
+    }
+
+  });
+
+}
 
 
-friendSearchInput.addEventListener("input", async () => {
+// ============================================
+// SEARCH USERS
+// ============================================
 
-  const search =
-    friendSearchInput.value.trim().toLowerCase();
+if (friendSearchInput) {
 
-  friendSearchResults.innerHTML = "";
+  friendSearchInput.addEventListener(
+    "input",
+    async () => {
 
-  if (!search) return;
+      const search =
+        friendSearchInput.value
+          .trim()
+          .toLowerCase();
 
-  try {
+      friendSearchResults.innerHTML = "";
 
-    const usersRef = collection(db, "users");
-
-    const snapshot = await getDocs(usersRef);
-
-    snapshot.forEach((userDoc) => {
-
-      const user = userDoc.data();
-
-      if (
-        userDoc.id === auth.currentUser.uid
-      ) {
+      if (!search) {
         return;
       }
 
-      const email =
-        (user.email || "").toLowerCase();
+      if (!auth.currentUser) {
+        console.error("User is not logged in.");
+        return;
+      }
 
-      const name =
-        (user.name || "").toLowerCase();
+      try {
 
-      if (
-        email.includes(search) ||
-        name.includes(search)
-      ) {
+        const usersSnapshot =
+          await getDocs(
+            collection(db, "users")
+          );
 
-        const result =
-          document.createElement("div");
+        let foundUser = false;
 
-        result.className =
-          "friend-result";
+        usersSnapshot.forEach((userDoc) => {
 
-        result.innerHTML = `
-          <div class="friend-info">
+          const user =
+            userDoc.data();
 
-            <img
-              src="${user.photo || ""}"
-              class="friend-avatar"
-              onerror="this.style.display='none'"
-            >
+          // Don't show yourself
+          if (
+            userDoc.id ===
+            auth.currentUser.uid
+          ) {
+            return;
+          }
 
-            <div>
-              <strong>
-                ${escapeHTML(user.name || "User")}
-              </strong>
+          const name =
+            (user.name || "")
+              .toLowerCase();
 
-              <small>
-                ${escapeHTML(user.email || "")}
-              </small>
-            </div>
+          const email =
+            (user.email || "")
+              .toLowerCase();
 
-          </div>
+          if (
+            name.includes(search) ||
+            email.includes(search)
+          ) {
 
-          <button class="add-friend-btn">
-            Add
-          </button>
-        `;
+            foundUser = true;
 
-        result
-          .querySelector(".add-friend-btn")
-          .addEventListener("click", () => {
+            const result =
+              document.createElement("div");
 
-            sendFriendRequest(
-              userDoc.id,
-              user
+            result.className =
+              "friend-result";
+
+            result.innerHTML = `
+              <div class="friend-info">
+
+                <img
+                  src="${user.photo || ""}"
+                  class="friend-avatar"
+                  onerror="this.style.display='none'"
+                >
+
+                <div>
+                  <strong>
+                    ${escapeHTML(
+                      user.name || "User"
+                    )}
+                  </strong>
+
+                  <small>
+                    ${escapeHTML(
+                      user.email || ""
+                    )}
+                  </small>
+                </div>
+
+              </div>
+
+              <button
+                class="add-friend-btn"
+              >
+                Add
+              </button>
+            `;
+
+            const addButton =
+              result.querySelector(
+                ".add-friend-btn"
+              );
+
+            addButton.addEventListener(
+              "click",
+              () => {
+
+                sendFriendRequest(
+                  userDoc.id,
+                  user,
+                  addButton
+                );
+
+              }
             );
 
-          });
+            friendSearchResults.appendChild(
+              result
+            );
 
-        friendSearchResults.appendChild(result);
+          }
+
+        });
+
+        if (!foundUser) {
+
+          friendSearchResults.innerHTML = `
+            <div class="no-users">
+              No users found.
+            </div>
+          `;
+
+        }
+
+      } catch (error) {
+
+        console.error(
+          "User search failed:",
+          error
+        );
+
+        friendSearchResults.innerHTML = `
+          <div class="no-users">
+            Unable to search users.
+          </div>
+        `;
 
       }
 
-    });
+    }
+  );
 
-  } catch (error) {
+}
 
-    console.error(
-      "User search failed:",
-      error
-    );
 
-  }
+// ============================================
+// SEND FRIEND REQUEST
+// ============================================
 
-});
 async function sendFriendRequest(
   targetUserId,
-  targetUser
+  targetUser,
+  button
 ) {
 
-  if (!auth.currentUser) return;
+  if (!auth.currentUser) {
+    return;
+  }
+
+  // Prevent double clicking
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Sending...";
+  }
 
   try {
 
     await addDoc(
       collection(db, "friendRequests"),
       {
-        from: auth.currentUser.uid,
+
+        from:
+          auth.currentUser.uid,
+
         fromName:
-          auth.currentUser.displayName || "User",
+          auth.currentUser.displayName ||
+          "User",
+
         fromEmail:
-          auth.currentUser.email || "",
+          auth.currentUser.email ||
+          "",
+
         fromPhoto:
-          auth.currentUser.photoURL || "",
+          auth.currentUser.photoURL ||
+          "",
 
-        to: targetUserId,
+        to:
+          targetUserId,
 
-        status: "pending",
+        status:
+          "pending",
 
-        createdAt: serverTimestamp()
+        createdAt:
+          serverTimestamp()
+
       }
     );
 
-    alert(
-      `Friend request sent to ${targetUser.name}!`
+    if (button) {
+      button.textContent = "Sent ✓";
+      button.disabled = true;
+    }
+
+    console.log(
+      "Friend request sent:",
+      targetUser.email
     );
 
   } catch (error) {
@@ -673,8 +777,14 @@ async function sendFriendRequest(
       error
     );
 
+    if (button) {
+      button.textContent = "Add";
+      button.disabled = false;
+    }
+
     alert(
-      "Could not send friend request."
+      "Could not send friend request.\n\n" +
+      error.message
     );
 
   }
