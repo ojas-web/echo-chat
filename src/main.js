@@ -481,39 +481,170 @@ function escapeHTML(text) {
 
 }
 
-const messagesQuery = query(
-  collection(db, "messages"),
-  orderBy("createdAt", "asc")
-);
+// ============================================
+// PUBLIC CHAT
+// ============================================
 
-onSnapshot(messagesQuery, (snapshot) => {
-  messages.innerHTML = "";
+const publicChatBtn =
+  document.getElementById("publicChatBtn");
 
-  snapshot.forEach((doc) => {
-    const data = doc.data();
+let publicMessagesUnsubscribe = null;
 
-    const isMine =
-      data.senderId === auth.currentUser?.uid;
 
-    const message = document.createElement("div");
+// Open Public Chat
 
-    message.className =
-      `message ${isMine ? "sent" : "received"}`;
+publicChatBtn.addEventListener("click", () => {
 
-    message.innerHTML = `
-      <div class="bubble">
-        ${escapeHTML(data.text)}
-        <span class="message-time">
-          ${data.senderName || "User"}
-        </span>
-      </div>
-    `;
+  // Remove active state from friend chats
 
-    messages.appendChild(message);
-  });
+  document
+    .querySelectorAll(".chat-item")
+    .forEach((item) => {
+      item.classList.remove("active");
+    });
 
-  scrollMessages();
+  publicChatBtn.classList.add("active");
+
+  currentName.textContent = "Public Chat";
+  currentStatus.textContent = "Everyone";
+  currentAvatar.style.backgroundImage = "";
+  currentAvatar.textContent = "🌎";
+
+
+  if (window.innerWidth <= 800) {
+    app.classList.add("mobile-chat");
+  }
+
+
+  loadPublicMessages();
+
 });
+
+
+// ============================================
+// LOAD PUBLIC MESSAGES
+// ============================================
+
+function loadPublicMessages() {
+
+  // Stop previous listener
+
+  if (publicMessagesUnsubscribe) {
+    publicMessagesUnsubscribe();
+  }
+
+
+  const publicMessagesQuery = query(
+    collection(db, "messages"),
+    orderBy("createdAt", "asc")
+  );
+
+
+  publicMessagesUnsubscribe =
+    onSnapshot(
+      publicMessagesQuery,
+      (snapshot) => {
+
+        messages.innerHTML = "";
+
+
+        snapshot.forEach((messageDoc) => {
+
+          const data =
+            messageDoc.data();
+
+          const isMine =
+            data.senderId ===
+            auth.currentUser?.uid;
+
+
+          const message =
+            document.createElement("div");
+
+          message.className =
+            `message ${
+              isMine
+                ? "sent"
+                : "received"
+            }`;
+
+
+          const time =
+            data.createdAt?.toDate
+              ? data.createdAt
+                  .toDate()
+                  .toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit"
+                  })
+              : "";
+
+
+          message.innerHTML = `
+
+            <div class="bubble">
+
+              ${
+                !isMine
+                  ? `
+                    <small
+                      style="
+                        display:block;
+                        font-weight:bold;
+                        opacity:.7;
+                        margin-bottom:3px;
+                      "
+                    >
+                      ${escapeHTML(
+                        data.senderName ||
+                        "User"
+                      )}
+                    </small>
+                  `
+                  : ""
+              }
+
+              ${escapeHTML(
+                data.text || ""
+              )}
+
+              <span class="message-time">
+                ${time}
+                ${isMine ? " ✓✓" : ""}
+              </span>
+
+            </div>
+          `;
+
+
+          messages.appendChild(message);
+
+        });
+
+
+        scrollMessages();
+
+      },
+      (error) => {
+
+        console.error(
+          "Public chat error:",
+          error
+        );
+
+      }
+    );
+
+}
+
+
+// ============================================
+// OPEN PUBLIC CHAT BY DEFAULT
+// ============================================
+
+if (auth.currentUser) {
+  loadPublicMessages();
+}
 
 // ============================================
 // FIND FRIENDS
