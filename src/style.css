@@ -686,9 +686,7 @@ body {
     width: 100%;
   }
 
-  .chat-window {
-    display: none;
-  }
+
 
   .app.mobile-chat .sidebar {
     display: none;
