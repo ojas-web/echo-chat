@@ -759,22 +759,7 @@ body {
 
   /* Chat */
 
-  .chat-container {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100dvh;
-    min-width: 0;
-    transform: translateX(100%);
-    transition: transform 0.25s ease;
-    z-index: 10;
-  }
-
-  /* Open chat */
-
-  #app.mobile-chat .chat-container {
-    transform: translateX(0);
-  }
+ 
 
   #app.mobile-chat .sidebar {
     display: none;
@@ -1426,4 +1411,123 @@ body {
     display: block !important;
   }
 
+}
+
+/* =========================================
+   FINAL ECHO CHAT LAYOUT FIX
+========================================= */
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  overflow: hidden;
+}
+
+#app.app {
+  width: 100%;
+  height: 100vh;
+  display: flex !important;
+  flex-direction: row;
+  overflow: hidden;
+}
+
+#app .sidebar {
+  width: 390px;
+  min-width: 390px;
+  height: 100vh;
+  flex-shrink: 0;
+  display: flex !important;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+#app .chat-window {
+  position: relative !important;
+  inset: auto !important;
+
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+
+  flex: 1 1 auto;
+  width: auto !important;
+  min-width: 0;
+  height: 100vh;
+
+  transform: none !important;
+
+  flex-direction: column;
+
+  background: #0b141a;
+  color: #e9edef;
+}
+
+#app .chat-header {
+  flex-shrink: 0;
+}
+
+#app .messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+#app .composer {
+  flex-shrink: 0;
+}
+
+
+/* =========================================
+   MOBILE
+========================================= */
+
+@media (max-width: 800px) {
+
+  #app.app {
+    position: relative;
+    width: 100%;
+    height: 100dvh;
+  }
+
+  #app .sidebar {
+    width: 100%;
+    min-width: 100%;
+    height: 100dvh;
+  }
+
+  #app .chat-window {
+    position: absolute !important;
+    inset: 0 !important;
+
+    width: 100% !important;
+    height: 100dvh;
+
+    transform: translateX(100%) !important;
+
+    z-index: 100;
+  }
+
+  #app.mobile-chat .chat-window {
+    transform: translateX(0) !important;
+  }
+
+  #app.mobile-chat .sidebar {
+    display: none !important;
+  }
+
+  #app:not(.mobile-chat) .chat-window {
+    visibility: hidden;
+  }
+
+  .back-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
 }
