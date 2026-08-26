@@ -235,70 +235,59 @@ function getPrivateChatId(uid1, uid2) {
 // SEND MESSAGE
 // ======================================================
 
+// ======================================================
+// SEND MESSAGE
+// ======================================================
+
 async function sendMessage() {
 
-  const text =
-    messageInput?.value.trim();
+  const text = messageInput?.value.trim();
 
   if (!text) return;
 
   if (!auth.currentUser) return;
 
+  const myUid = auth.currentUser.uid;
 
   try {
 
-    // ----------------------------------------------
+    // ==================================================
     // PUBLIC CHAT
-    // ----------------------------------------------
+    // ==================================================
 
     if (currentChatType === "public") {
 
       await addDoc(
-  collection(
-    db,
-    "privateChats",
-    chatId,
-    "messages"
-  ),
-  {
-    text: text,
+        collection(db, "messages"),
+        {
+          text: text,
 
-    senderId: myUid,
+          senderId: myUid,
 
-    senderName:
-      auth.currentUser.displayName ||
-      auth.currentUser.email?.split("@")[0] ||
-      "User",
+          senderName:
+            auth.currentUser.displayName ||
+            auth.currentUser.email?.split("@")[0] ||
+            "User",
 
-    senderPhoto:
-      auth.currentUser.photoURL || "",
+          senderPhoto:
+            auth.currentUser.photoURL || "",
 
-    receiverId: friendUid,
-
-    participants: [
-      myUid,
-      friendUid
-    ],
-
-    createdAt:
-      serverTimestamp()
-  }
-);
+          createdAt:
+            serverTimestamp()
+        }
+      );
 
     }
 
 
-    // ----------------------------------------------
+    // ==================================================
     // PRIVATE FRIEND CHAT
-    // ----------------------------------------------
+    // ==================================================
 
     else if (
       currentChatType === "private" &&
       currentFriend
     ) {
-
-      const myUid =
-        auth.currentUser.uid;
 
       const friendUid =
         currentFriend.uid;
@@ -309,7 +298,6 @@ async function sendMessage() {
           friendUid
         );
 
-
       await addDoc(
         collection(
           db,
@@ -318,11 +306,9 @@ async function sendMessage() {
           "messages"
         ),
         {
-
           text: text,
 
-          senderId:
-            myUid,
+          senderId: myUid,
 
           senderName:
             auth.currentUser.displayName ||
@@ -335,14 +321,17 @@ async function sendMessage() {
           receiverId:
             friendUid,
 
+          participants: [
+            myUid,
+            friendUid
+          ],
+
           createdAt:
             serverTimestamp()
-
         }
       );
 
     }
-
 
     messageInput.value = "";
 
