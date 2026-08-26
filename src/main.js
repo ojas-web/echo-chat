@@ -10,31 +10,24 @@ import {
   getDocs,
   where
 } from "firebase/firestore";
+
 import "./style.css";
-
-
-
 
 import {
   signInWithPopup,
-  onAuthStateChanged,
-  signOut
+  onAuthStateChanged
 } from "firebase/auth";
 
 import {
   db,
-  auth
-} from "./firebase.js";
-
-import {
-  
+  auth,
   googleProvider
 } from "./firebase.js";
 
 
-// ============================================
+// ======================================================
 // ELEMENTS
-// ============================================
+// ======================================================
 
 const loginScreen = document.getElementById("loginScreen");
 const app = document.getElementById("app");
@@ -53,581 +46,486 @@ const currentAvatar = document.getElementById("currentAvatar");
 const myName = document.getElementById("myName");
 const myAvatar = document.getElementById("myAvatar");
 
+const chatList = document.getElementById("chatList");
 
-// ============================================
+
+// ======================================================
+// STATE
+// ======================================================
+
+let currentChatType = "public";
+let currentFriend = null;
+
+let messageUnsubscribe = null;
+let friendUnsubscribe = null;
+let requestUnsubscribe = null;
+
+
+// ======================================================
+// SAFE ELEMENT HELPER
+// ======================================================
+
+function element(id) {
+  return document.getElementById(id);
+}
+
+
+// ======================================================
 // GOOGLE LOGIN
-// ============================================
+// ======================================================
 
-googleLogin.addEventListener("click", async () => {
+if (googleLogin) {
 
-  try {
+  googleLogin.addEventListener("click", async () => {
 
-    googleLogin.disabled = true;
-    googleLogin.innerHTML = "Signing in...";
+    try {
 
-    await signInWithPopup(
-      auth,
-      googleProvider
-    );
+      googleLogin.disabled = true;
+      googleLogin.innerHTML = "Signing in...";
 
-  } catch (error) {
+      await signInWithPopup(
+        auth,
+        googleProvider
+      );
 
-    console.error("Google login error:", error);
+    } catch (error) {
 
-    alert(
-      "Google login failed.\n\n" +
-      error.message
-    );
+      console.error(
+        "Google login error:",
+        error
+      );
 
-    googleLogin.disabled = false;
+      alert(
+        "Google login failed.\n\n" +
+        error.message
+      );
 
-    googleLogin.innerHTML = `
-      <span class="google-icon">G</span>
-      Continue with Google
-    `;
-  }
+      googleLogin.disabled = false;
 
-});
+      googleLogin.innerHTML = `
+        <span class="google-icon">G</span>
+        Continue with Google
+      `;
+    }
+
+  });
+
+}
 
 
-// ============================================
-// CHECK LOGIN STATE
-// ============================================
+// ======================================================
+// AUTH STATE
+// ======================================================
 
 onAuthStateChanged(auth, async (user) => {
 
-  if (user) {
-await setDoc(
-  doc(db, "users", user.uid),
-  {
-    name: user.displayName || "User",
-    email: user.email || "",
-    photo: user.photoURL || "",
-    lastSeen: serverTimestamp()
-  },
-  { merge: true }
-);
-    // User is logged in
+  if (!user) {
 
-    loginScreen.classList.add("hidden");
-    app.classList.remove("hidden");
+    loginScreen?.classList.remove("hidden");
+    app?.classList.add("hidden");
 
-    const name =
-      user.displayName ||
-      user.email?.split("@")[0] ||
-      "User";
+    return;
+  }
 
-    const photo =
-      user.photoURL;
 
-    myName.textContent = name;
+  try {
 
-    currentName.textContent = "Public Chat";
-currentStatus.textContent = "Everyone";
-currentAvatar.textContent = "🌎";
-currentAvatar.style.backgroundImage = "";
+    // Create/update user's profile
+    await setDoc(
+      doc(db, "users", user.uid),
+      {
+        name:
+          user.displayName ||
+          user.email?.split("@")[0] ||
+          "User",
 
-    if (photo) {
+        email:
+          user.email || "",
 
-      myAvatar.style.backgroundImage =
-        `url("${photo}")`;
+        photo:
+          user.photoURL || "",
 
-      myAvatar.style.backgroundSize =
-        "cover";
-
-      myAvatar.textContent = "";
-
-    } else {
-
-      myAvatar.textContent =
-        name.charAt(0).toUpperCase();
-
-    }
-
-    console.log(
-      "Logged in:",
-      user.email
+        lastSeen:
+          serverTimestamp()
+      },
+      {
+        merge: true
+      }
     );
+
+  } catch (error) {
+
+    console.error(
+      "User profile error:",
+      error
+    );
+
+  }
+
+
+  // Show application
+
+  loginScreen?.classList.add("hidden");
+  app?.classList.remove("hidden");
+
+
+  const name =
+    user.displayName ||
+    user.email?.split("@")[0] ||
+    "User";
+
+
+  myName.textContent = name;
+
+
+  // My avatar
+
+  if (user.photoURL) {
+
+    myAvatar.style.backgroundImage =
+      `url("${user.photoURL}")`;
+
+    myAvatar.style.backgroundSize =
+      "cover";
+
+    myAvatar.textContent = "";
 
   } else {
 
-    // User is logged out
+    myAvatar.style.backgroundImage = "";
 
-    loginScreen.classList.remove("hidden");
-    app.classList.add("hidden");
+    myAvatar.textContent =
+      name.charAt(0).toUpperCase();
 
   }
+
+
+  // Start systems
+
+  listenForFriendRequests();
+  loadFriends();
+
+  // Open public chat
+
+  openPublicChat();
+
+
+  console.log(
+    "Logged in:",
+    user.email
+  );
 
 });
 
 
-// ============================================
+// ======================================================
+// CREATE PRIVATE CHAT ID
+// ======================================================
+
+function getPrivateChatId(uid1, uid2) {
+
+  return [uid1, uid2]
+    .sort()
+    .join("_");
+
+}
+
+
+// ======================================================
 // SEND MESSAGE
-// ============================================
+// ======================================================
 
 async function sendMessage() {
-  const text = messageInput.value.trim();
+
+  const text =
+    messageInput?.value.trim();
 
   if (!text) return;
 
+  if (!auth.currentUser) return;
+
+
   try {
-    await addDoc(collection(db, "messages"), {
-      text: text,
-      senderId: auth.currentUser.uid,
-      senderName: auth.currentUser.displayName,
-      createdAt: serverTimestamp()
-    });
 
-    messageInput.value = "";
-  } catch (error) {
-    console.error("Message failed:", error);
-  }
-}
+    // ----------------------------------------------
+    // PUBLIC CHAT
+    // ----------------------------------------------
 
+    if (currentChatType === "public") {
 
-// ============================================
-// SEND BUTTON
-// ============================================
+      await addDoc(
+        collection(db, "messages"),
+        {
 
-sendBtn.addEventListener(
-  "click",
-  sendMessage
-);
+          type: "public",
 
+          text: text,
 
-// ============================================
-// ENTER TO SEND
-// ============================================
+          senderId:
+            auth.currentUser.uid,
 
-messageInput.addEventListener(
-  "keydown",
-  (event) => {
+          senderName:
+            auth.currentUser.displayName ||
+            auth.currentUser.email?.split("@")[0] ||
+            "User",
 
-    if (
-      event.key === "Enter" &&
-      !event.shiftKey
-    ) {
+          senderPhoto:
+            auth.currentUser.photoURL || "",
 
-      event.preventDefault();
-
-      sendMessage();
-
-    }
-
-  }
-);
-
-
-// ============================================
-// CHAT SEARCH
-// ============================================
-
-searchInput.addEventListener(
-  "input",
-  () => {
-
-    const query =
-      searchInput.value
-        .toLowerCase()
-        .trim();
-
-    document
-      .querySelectorAll(".chat-item")
-      .forEach((chat) => {
-
-        const name =
-          chat.dataset.name
-            .toLowerCase();
-
-        chat.style.display =
-          name.includes(query)
-            ? "flex"
-            : "none";
-
-      });
-
-  }
-);
-
-
-// ============================================
-// OPEN CHAT
-// ============================================
-
-document
-  .querySelectorAll(".chat-item")
-  .forEach((chat) => {
-
-    chat.addEventListener(
-      "click",
-      () => {
-
-        document
-          .querySelectorAll(".chat-item")
-          .forEach((item) => {
-
-            item.classList.remove(
-              "active"
-            );
-
-          });
-
-        chat.classList.add("active");
-
-        const name =
-          chat.dataset.name;
-
-        currentName.textContent =
-          name;
-
-        currentAvatar.textContent =
-          name.charAt(0);
-
-        currentStatus.textContent =
-          name === "Alex"
-            ? "online"
-            : "last seen recently";
-
-        if (
-          window.innerWidth <= 800
-        ) {
-
-          app.classList.add(
-            "mobile-chat"
-          );
+          createdAt:
+            serverTimestamp()
 
         }
-
-      }
-    );
-
-  });
-
-
-// ============================================
-// MOBILE BACK
-// ============================================
-
-document
-  .getElementById("backBtn")
-  .addEventListener(
-    "click",
-    () => {
-
-      app.classList.remove(
-        "mobile-chat"
       );
 
     }
-  );
 
 
-// ============================================
-// EMOJI
-// ============================================
+    // ----------------------------------------------
+    // PRIVATE FRIEND CHAT
+    // ----------------------------------------------
 
-document
-  .getElementById("emojiBtn")
-  .addEventListener(
-    "click",
-    () => {
+    else if (
+      currentChatType === "private" &&
+      currentFriend
+    ) {
 
-      messageInput.value += " 😊";
+      const myUid =
+        auth.currentUser.uid;
 
-      messageInput.focus();
+      const friendUid =
+        currentFriend.uid;
 
-    }
-  );
-
-
-// ============================================
-// ATTACHMENTS
-// ============================================
-
-const attachBtn =
-  document.getElementById(
-    "attachBtn"
-  );
-
-const fileInput =
-  document.getElementById(
-    "fileInput"
-  );
-
-attachBtn.addEventListener(
-  "click",
-  () => {
-
-    fileInput.click();
-
-  }
-);
-
-fileInput.addEventListener(
-  "change",
-  () => {
-
-    const file =
-      fileInput.files[0];
-
-    if (!file) return;
-
-    const message =
-      document.createElement("div");
-
-    message.className =
-      "message sent";
-
-    message.innerHTML = `
-      <div class="bubble">
-
-        📎 ${escapeHTML(file.name)}
-
-        <span class="message-time">
-          ${getTime()} ✓
-        </span>
-
-      </div>
-    `;
-
-    messages.appendChild(message);
-
-    scrollMessages();
-
-    fileInput.value = "";
-
-  }
-);
-
-
-// ============================================
-// VOICE INPUT
-// ============================================
-
-document
-  .getElementById("voiceBtn")
-  .addEventListener(
-    "click",
-    () => {
-
-      const Recognition =
-        window.SpeechRecognition ||
-        window.webkitSpeechRecognition;
-
-      if (!Recognition) {
-
-        alert(
-          "Voice input is not supported in this browser."
+      const chatId =
+        getPrivateChatId(
+          myUid,
+          friendUid
         );
 
-        return;
+
+      await addDoc(
+        collection(
+          db,
+          "privateChats",
+          chatId,
+          "messages"
+        ),
+        {
+
+          text: text,
+
+          senderId:
+            myUid,
+
+          senderName:
+            auth.currentUser.displayName ||
+            auth.currentUser.email?.split("@")[0] ||
+            "User",
+
+          senderPhoto:
+            auth.currentUser.photoURL || "",
+
+          receiverId:
+            friendUid,
+
+          createdAt:
+            serverTimestamp()
+
+        }
+      );
+
+    }
+
+
+    messageInput.value = "";
+
+  } catch (error) {
+
+    console.error(
+      "Message failed:",
+      error
+    );
+
+    alert(
+      "Message could not be sent.\n\n" +
+      error.message
+    );
+
+  }
+
+}
+
+
+// ======================================================
+// SEND BUTTON
+// ======================================================
+
+if (sendBtn) {
+
+  sendBtn.addEventListener(
+    "click",
+    sendMessage
+  );
+
+}
+
+
+// ======================================================
+// ENTER TO SEND
+// ======================================================
+
+if (messageInput) {
+
+  messageInput.addEventListener(
+    "keydown",
+    (event) => {
+
+      if (
+        event.key === "Enter" &&
+        !event.shiftKey
+      ) {
+
+        event.preventDefault();
+
+        sendMessage();
 
       }
 
-      const recognition =
-        new Recognition();
-
-      recognition.lang =
-        "en-US";
-
-      recognition.start();
-
-      recognition.onresult =
-        (event) => {
-
-          messageInput.value =
-            event.results[0][0]
-              .transcript;
-
-          messageInput.focus();
-
-        };
-
     }
   );
 
-
-// ============================================
-// HELPERS
-// ============================================
-
-function getTime() {
-
-  return new Date()
-    .toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit"
-    });
-
 }
 
 
-function scrollMessages() {
-
-  messages.scrollTo({
-    top: messages.scrollHeight,
-    behavior: "smooth"
-  });
-
-}
-
-
-function escapeHTML(text) {
-
-  const div =
-    document.createElement("div");
-
-  div.textContent = text;
-
-  return div.innerHTML;
-
-}
-
-// ============================================
+// ======================================================
 // PUBLIC CHAT
-// ============================================
+// ======================================================
 
 const publicChatBtn =
-  document.getElementById("publicChatBtn");
-
-let publicMessagesUnsubscribe = null;
+  element("publicChatBtn");
 
 
-// Open Public Chat
+if (publicChatBtn) {
 
-publicChatBtn.addEventListener("click", () => {
+  publicChatBtn.addEventListener(
+    "click",
+    openPublicChat
+  );
 
-  // Remove active state from friend chats
+}
+
+
+function openPublicChat() {
+
+  if (!auth.currentUser) return;
+
+
+  currentChatType = "public";
+  currentFriend = null;
+
 
   document
     .querySelectorAll(".chat-item")
-    .forEach((item) => {
+    .forEach(item => {
+
       item.classList.remove("active");
+
     });
 
-  publicChatBtn.classList.add("active");
 
-  currentName.textContent = "Public Chat";
-  currentStatus.textContent = "Everyone";
-  currentAvatar.style.backgroundImage = "";
-  currentAvatar.textContent = "🌎";
+  publicChatBtn?.classList.add("active");
 
 
-  if (window.innerWidth <= 800) {
-    app.classList.add("mobile-chat");
+  currentName.textContent =
+    "Public Chat";
+
+  currentStatus.textContent =
+    "Everyone";
+
+  currentAvatar.style.backgroundImage =
+    "";
+
+  currentAvatar.textContent =
+    "🌎";
+
+
+  if (
+    window.innerWidth <= 800
+  ) {
+
+    app.classList.add(
+      "mobile-chat"
+    );
+
   }
 
 
   loadPublicMessages();
 
-});
+}
 
 
-// ============================================
+// ======================================================
 // LOAD PUBLIC MESSAGES
-// ============================================
+// ======================================================
 
 function loadPublicMessages() {
 
-  // Stop previous listener
+  if (!auth.currentUser) return;
 
-  if (publicMessagesUnsubscribe) {
-    publicMessagesUnsubscribe();
+
+  if (messageUnsubscribe) {
+
+    messageUnsubscribe();
+
+    messageUnsubscribe = null;
+
   }
 
 
-  const publicMessagesQuery = query(
-    collection(db, "messages"),
-    orderBy("createdAt", "asc")
-  );
+  const messagesQuery =
+    query(
+      collection(db, "messages"),
+      orderBy(
+        "createdAt",
+        "asc"
+      )
+    );
 
 
-  publicMessagesUnsubscribe =
+  messageUnsubscribe =
     onSnapshot(
-      publicMessagesQuery,
-      (snapshot) => {
+      messagesQuery,
+      snapshot => {
 
         messages.innerHTML = "";
 
 
-        snapshot.forEach((messageDoc) => {
+        snapshot.forEach(
+          messageDoc => {
 
-          const data =
-            messageDoc.data();
-
-          const isMine =
-            data.senderId ===
-            auth.currentUser?.uid;
+            const data =
+              messageDoc.data();
 
 
-          const message =
-            document.createElement("div");
+            const isMine =
+              data.senderId ===
+              auth.currentUser?.uid;
 
-          message.className =
-            `message ${
+
+            addMessageToUI(
+              data,
               isMine
-                ? "sent"
-                : "received"
-            }`;
+            );
 
-
-          const time =
-            data.createdAt?.toDate
-              ? data.createdAt
-                  .toDate()
-                  .toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit"
-                  })
-              : "";
-
-
-          message.innerHTML = `
-
-            <div class="bubble">
-
-              ${
-                !isMine
-                  ? `
-                    <small
-                      style="
-                        display:block;
-                        font-weight:bold;
-                        opacity:.7;
-                        margin-bottom:3px;
-                      "
-                    >
-                      ${escapeHTML(
-                        data.senderName ||
-                        "User"
-                      )}
-                    </small>
-                  `
-                  : ""
-              }
-
-              ${escapeHTML(
-                data.text || ""
-              )}
-
-              <span class="message-time">
-                ${time}
-                ${isMine ? " ✓✓" : ""}
-              </span>
-
-            </div>
-          `;
-
-
-          messages.appendChild(message);
-
-        });
+          }
+        );
 
 
         scrollMessages();
 
       },
-      (error) => {
+      error => {
 
         console.error(
           "Public chat error:",
@@ -640,191 +538,309 @@ function loadPublicMessages() {
 }
 
 
+// ======================================================
+// OPEN PRIVATE FRIEND CHAT
+// ======================================================
+
+function openPrivateChat(friend) {
+
+  if (!auth.currentUser) return;
 
 
-// ============================================
-// FIND FRIENDS
-// ============================================
+  currentChatType =
+    "private";
 
-const findFriendsBtn =
-  document.getElementById("findFriendsBtn");
-
-const friendSearchPanel =
-  document.getElementById("friendSearchPanel");
-
-const friendSearchInput =
-  document.getElementById("friendSearchInput");
-
-const friendSearchResults =
-  document.getElementById("friendSearchResults");
+  currentFriend =
+    friend;
 
 
-if (findFriendsBtn) {
+  document
+    .querySelectorAll(".chat-item")
+    .forEach(item => {
 
-  findFriendsBtn.addEventListener("click", () => {
+      item.classList.remove(
+        "active"
+      );
 
-    friendSearchPanel.classList.toggle("hidden");
+    });
 
-    if (
-      !friendSearchPanel.classList.contains("hidden")
-    ) {
-      friendSearchInput.focus();
-    }
 
-  });
+  currentName.textContent =
+    friend.name || "User";
+
+  currentStatus.textContent =
+    "Private chat";
+
+
+  const firstLetter =
+    (friend.name || "U")
+      .charAt(0)
+      .toUpperCase();
+
+
+  if (friend.photo) {
+
+    currentAvatar.style.backgroundImage =
+      `url("${friend.photo}")`;
+
+    currentAvatar.style.backgroundSize =
+      "cover";
+
+    currentAvatar.textContent = "";
+
+  } else {
+
+    currentAvatar.style.backgroundImage =
+      "";
+
+    currentAvatar.textContent =
+      firstLetter;
+
+  }
+
+
+  if (
+    window.innerWidth <= 800
+  ) {
+
+    app.classList.add(
+      "mobile-chat"
+    );
+
+  }
+
+
+  loadPrivateMessages(
+    friend.uid
+  );
 
 }
 
 
-// ============================================
-// SEARCH USERS
-// ============================================
+// ======================================================
+// LOAD PRIVATE MESSAGES
+// ======================================================
 
-if (friendSearchInput) {
+function loadPrivateMessages(
+  friendUid
+) {
 
-  friendSearchInput.addEventListener(
-    "input",
-    async () => {
+  if (!auth.currentUser) return;
 
-      const search =
-        friendSearchInput.value
-          .trim()
-          .toLowerCase();
 
-      friendSearchResults.innerHTML = "";
+  if (messageUnsubscribe) {
 
-      if (!search) {
-        return;
-      }
+    messageUnsubscribe();
 
-      if (!auth.currentUser) {
-        console.error("User is not logged in.");
-        return;
-      }
+    messageUnsubscribe = null;
 
-      try {
+  }
 
-        const usersSnapshot =
-          await getDocs(
-            collection(db, "users")
-          );
 
-        let foundUser = false;
+  const myUid =
+    auth.currentUser.uid;
 
-        usersSnapshot.forEach((userDoc) => {
 
-          const user =
-            userDoc.data();
+  const chatId =
+    getPrivateChatId(
+      myUid,
+      friendUid
+    );
 
-          // Don't show yourself
-          if (
-            userDoc.id ===
-            auth.currentUser.uid
-          ) {
-            return;
-          }
 
-          const name =
-            (user.name || "")
-              .toLowerCase();
+  const messagesQuery =
+    query(
+      collection(
+        db,
+        "privateChats",
+        chatId,
+        "messages"
+      ),
+      orderBy(
+        "createdAt",
+        "asc"
+      )
+    );
 
-          const email =
-            (user.email || "")
-              .toLowerCase();
 
-          if (
-            name.includes(search) ||
-            email.includes(search)
-          ) {
+  messageUnsubscribe =
+    onSnapshot(
+      messagesQuery,
+      snapshot => {
 
-            foundUser = true;
+        messages.innerHTML = "";
 
-            const result =
-              document.createElement("div");
 
-            result.className =
-              "friend-result";
+        snapshot.forEach(
+          messageDoc => {
 
-            result.innerHTML = `
-              <div class="friend-info">
+            const data =
+              messageDoc.data();
 
-                <img
-                  src="${user.photo || ""}"
-                  class="friend-avatar"
-                  onerror="this.style.display='none'"
-                >
 
-                <div>
-                  <strong>
-                    ${escapeHTML(
-                      user.name || "User"
-                    )}
-                  </strong>
+            const isMine =
+              data.senderId ===
+              myUid;
 
-                  <small>
-                    ${escapeHTML(
-                      user.email || ""
-                    )}
-                  </small>
-                </div>
 
-              </div>
-
-              <button
-                class="add-friend-btn"
-              >
-                Add
-              </button>
-            `;
-
-            const addButton =
-              result.querySelector(
-                ".add-friend-btn"
-              );
-
-            addButton.addEventListener(
-              "click",
-              () => {
-
-                sendFriendRequest(
-                  userDoc.id,
-                  user,
-                  addButton
-                );
-
-              }
-            );
-
-            friendSearchResults.appendChild(
-              result
+            addMessageToUI(
+              data,
+              isMine
             );
 
           }
+        );
 
-        });
 
-        if (!foundUser) {
+        scrollMessages();
 
-          friendSearchResults.innerHTML = `
-            <div class="no-users">
-              No users found.
-            </div>
-          `;
-
-        }
-
-      } catch (error) {
+      },
+      error => {
 
         console.error(
-          "User search failed:",
+          "Private chat error:",
           error
         );
 
-        friendSearchResults.innerHTML = `
-          <div class="no-users">
-            Unable to search users.
+        messages.innerHTML = `
+          <div class="no-messages">
+            Unable to load private messages.
           </div>
         `;
+
+      }
+    );
+
+}
+
+
+// ======================================================
+// MESSAGE UI
+// ======================================================
+
+function addMessageToUI(
+  data,
+  isMine
+) {
+
+  const message =
+    document.createElement(
+      "div"
+    );
+
+
+  message.className =
+    `message ${
+      isMine
+        ? "sent"
+        : "received"
+    }`;
+
+
+  let time = "";
+
+
+  if (
+    data.createdAt &&
+    data.createdAt.toDate
+  ) {
+
+    time =
+      data.createdAt
+        .toDate()
+        .toLocaleTimeString(
+          [],
+          {
+            hour: "2-digit",
+            minute: "2-digit"
+          }
+        );
+
+  }
+
+
+  message.innerHTML = `
+
+    <div class="bubble">
+
+      ${
+        !isMine &&
+        currentChatType === "public"
+          ? `
+            <small class="message-sender">
+              ${escapeHTML(
+                data.senderName ||
+                "User"
+              )}
+            </small>
+          `
+          : ""
+      }
+
+      ${escapeHTML(
+        data.text || ""
+      )}
+
+      <span class="message-time">
+
+        ${time}
+
+        ${
+          isMine
+            ? " ✓✓"
+            : ""
+        }
+
+      </span>
+
+    </div>
+
+  `;
+
+
+  messages.appendChild(
+    message
+  );
+
+}
+
+
+// ======================================================
+// FRIEND SEARCH
+// ======================================================
+
+const findFriendsBtn =
+  element("findFriendsBtn");
+
+const friendSearchPanel =
+  element("friendSearchPanel");
+
+const friendSearchInput =
+  element("friendSearchInput");
+
+const friendSearchResults =
+  element("friendSearchResults");
+
+
+if (findFriendsBtn) {
+
+  findFriendsBtn.addEventListener(
+    "click",
+    () => {
+
+      friendSearchPanel?.classList.toggle(
+        "hidden"
+      );
+
+
+      if (
+        friendSearchPanel &&
+        !friendSearchPanel.classList.contains(
+          "hidden"
+        )
+      ) {
+
+        friendSearchInput?.focus();
 
       }
 
@@ -834,9 +850,204 @@ if (friendSearchInput) {
 }
 
 
-// ============================================
+if (friendSearchInput) {
+
+  friendSearchInput.addEventListener(
+    "input",
+    searchUsers
+  );
+
+}
+
+
+async function searchUsers() {
+
+  const search =
+    friendSearchInput.value
+      .trim()
+      .toLowerCase();
+
+
+  friendSearchResults.innerHTML =
+    "";
+
+
+  if (!search) return;
+
+
+  if (!auth.currentUser) return;
+
+
+  try {
+
+    const snapshot =
+      await getDocs(
+        collection(
+          db,
+          "users"
+        )
+      );
+
+
+    let found = false;
+
+
+    snapshot.forEach(
+      userDoc => {
+
+        const user =
+          userDoc.data();
+
+
+        if (
+          userDoc.id ===
+          auth.currentUser.uid
+        ) {
+
+          return;
+
+        }
+
+
+        const name =
+          (
+            user.name || ""
+          ).toLowerCase();
+
+
+        const email =
+          (
+            user.email || ""
+          ).toLowerCase();
+
+
+        if (
+          name.includes(search) ||
+          email.includes(search)
+        ) {
+
+          found = true;
+
+
+          const result =
+            document.createElement(
+              "div"
+            );
+
+
+          result.className =
+            "friend-result";
+
+
+          result.innerHTML = `
+
+            <div class="friend-info">
+
+              ${
+                user.photo
+                  ? `
+                    <img
+                      class="friend-avatar"
+                      src="${user.photo}"
+                    >
+                  `
+                  : `
+                    <div class="friend-avatar">
+                      ${(user.name || "U")
+                        .charAt(0)
+                        .toUpperCase()}
+                    </div>
+                  `
+              }
+
+              <div>
+
+                <strong>
+                  ${escapeHTML(
+                    user.name ||
+                    "User"
+                  )}
+                </strong>
+
+                <small>
+                  ${escapeHTML(
+                    user.email ||
+                    ""
+                  )}
+                </small>
+
+              </div>
+
+            </div>
+
+            <button class="add-friend-btn">
+              Add
+            </button>
+
+          `;
+
+
+          const button =
+            result.querySelector(
+              ".add-friend-btn"
+            );
+
+
+          button.addEventListener(
+            "click",
+            () => {
+
+              sendFriendRequest(
+                userDoc.id,
+                user,
+                button
+              );
+
+            }
+          );
+
+
+          friendSearchResults.appendChild(
+            result
+          );
+
+        }
+
+      }
+    );
+
+
+    if (!found) {
+
+      friendSearchResults.innerHTML = `
+        <div class="no-users">
+          No users found.
+        </div>
+      `;
+
+    }
+
+  } catch (error) {
+
+    console.error(
+      "User search failed:",
+      error
+    );
+
+    friendSearchResults.innerHTML = `
+      <div class="no-users">
+        Unable to search users.
+      </div>
+    `;
+
+  }
+
+}
+
+
+// ======================================================
 // SEND FRIEND REQUEST
-// ============================================
+// ======================================================
 
 async function sendFriendRequest(
   targetUserId,
@@ -846,46 +1057,81 @@ async function sendFriendRequest(
 
   if (!auth.currentUser) return;
 
-  const currentUserId =
+
+  const myUid =
     auth.currentUser.uid;
 
-  if (currentUserId === targetUserId) {
-    alert("You cannot add yourself.");
+
+  if (
+    myUid === targetUserId
+  ) {
+
+    alert(
+      "You cannot add yourself."
+    );
+
     return;
+
   }
 
-  if (button) {
-    button.disabled = true;
-    button.textContent = "Checking...";
-  }
+
+  button.disabled = true;
+  button.textContent =
+    "Checking...";
+
 
   try {
 
-    // Check existing requests
-    const requestsQuery = query(
-      collection(db, "friendRequests"),
-      where("from", "==", currentUserId),
-      where("to", "==", targetUserId),
-      where("status", "==", "pending")
-    );
+    const q =
+      query(
+        collection(
+          db,
+          "friendRequests"
+        ),
 
-    const existingRequests =
-      await getDocs(requestsQuery);
+        where(
+          "from",
+          "==",
+          myUid
+        ),
 
-    if (!existingRequests.empty) {
+        where(
+          "to",
+          "==",
+          targetUserId
+        ),
 
-      if (button) {
-        button.textContent = "Sent ✓";
-      }
+        where(
+          "status",
+          "==",
+          "pending"
+        )
+      );
+
+
+    const existing =
+      await getDocs(q);
+
+
+    if (!existing.empty) {
+
+      button.textContent =
+        "Sent ✓";
 
       return;
+
     }
 
-    // Create request
+
     await addDoc(
-      collection(db, "friendRequests"),
+      collection(
+        db,
+        "friendRequests"
+      ),
       {
-        from: currentUserId,
+
+        from:
+          myUid,
 
         fromName:
           auth.currentUser.displayName ||
@@ -899,23 +1145,28 @@ async function sendFriendRequest(
           auth.currentUser.photoURL ||
           "",
 
-        to: targetUserId,
+        to:
+          targetUserId,
 
-        status: "pending",
+        status:
+          "pending",
 
         createdAt:
           serverTimestamp()
+
       }
     );
 
-    if (button) {
-      button.textContent = "Sent ✓";
-    }
+
+    button.textContent =
+      "Sent ✓";
+
 
     console.log(
       "Friend request sent to:",
       targetUser.email
     );
+
 
   } catch (error) {
 
@@ -924,194 +1175,261 @@ async function sendFriendRequest(
       error
     );
 
-    if (button) {
-      button.textContent = "Add";
-      button.disabled = false;
-    }
+
+    button.disabled =
+      false;
+
+    button.textContent =
+      "Add";
+
 
     alert(
       "Could not send friend request.\n\n" +
       error.message
     );
-  }
-}
-console.log(
-  "💬 Echo Chat + Firebase Authentication loaded!"
-);
 
-// ============================================
+  }
+
+}
+
+
+// ======================================================
 // FRIEND REQUESTS
-// ============================================
+// ======================================================
 
 const friendRequestsBtn =
-  document.getElementById("friendRequestsBtn");
+  element("friendRequestsBtn");
 
 const friendRequestsPanel =
-  document.getElementById("friendRequestsPanel");
+  element("friendRequestsPanel");
 
 const friendRequestsList =
-  document.getElementById("friendRequestsList");
+  element("friendRequestsList");
 
 const friendRequestCount =
-  document.getElementById("friendRequestCount");
+  element("friendRequestCount");
 
 
-// Open / close requests
+if (friendRequestsBtn) {
 
-friendRequestsBtn.addEventListener("click", () => {
+  friendRequestsBtn.addEventListener(
+    "click",
+    () => {
 
-  friendRequestsPanel.classList.toggle("hidden");
+      friendRequestsPanel?.classList.toggle(
+        "hidden"
+      );
 
-});
+    }
+  );
 
+}
 
-// ============================================
-// REAL-TIME FRIEND REQUESTS
-// ============================================
 
 function listenForFriendRequests() {
 
   if (!auth.currentUser) return;
 
-  const requestsQuery = query(
-    collection(db, "friendRequests"),
-    where("to", "==", auth.currentUser.uid),
-    where("status", "==", "pending")
-  );
 
-  onSnapshot(requestsQuery, (snapshot) => {
+  if (requestUnsubscribe) {
 
-    friendRequestsList.innerHTML = "";
+    requestUnsubscribe();
 
-    const count = snapshot.size;
-
-    // Notification number
-
-    friendRequestCount.textContent = count;
-
-    if (count > 0) {
-      friendRequestCount.classList.remove("hidden");
-    } else {
-      friendRequestCount.classList.add("hidden");
-    }
+  }
 
 
-    if (count === 0) {
+  const q =
+    query(
+      collection(
+        db,
+        "friendRequests"
+      ),
 
-      friendRequestsList.innerHTML = `
-        <div class="no-requests">
-          No friend requests
-        </div>
-      `;
+      where(
+        "to",
+        "==",
+        auth.currentUser.uid
+      ),
 
-      return;
-    }
-
-
-    snapshot.forEach((requestDoc) => {
-
-      const request =
-        requestDoc.data();
-
-      const item =
-        document.createElement("div");
-
-      item.className =
-        "friend-request";
-
-      const firstLetter =
-        (request.fromName || "U")
-          .charAt(0)
-          .toUpperCase();
+      where(
+        "status",
+        "==",
+        "pending"
+      )
+    );
 
 
-      item.innerHTML = `
+  requestUnsubscribe =
+    onSnapshot(
+      q,
+      snapshot => {
 
-        ${
-          request.fromPhoto
-          ?
-          `<img
-            class="request-avatar"
-            src="${request.fromPhoto}"
-          >`
-          :
-          `<div class="request-avatar">
-            ${firstLetter}
-          </div>`
+        friendRequestsList.innerHTML =
+          "";
+
+
+        const count =
+          snapshot.size;
+
+
+        friendRequestCount.textContent =
+          count;
+
+
+        if (count > 0) {
+
+          friendRequestCount.classList.remove(
+            "hidden"
+          );
+
+        } else {
+
+          friendRequestCount.classList.add(
+            "hidden"
+          );
+
         }
 
-        <div class="request-info">
 
-          <strong>
-            ${escapeHTML(
-              request.fromName || "User"
-            )}
-          </strong>
+        if (count === 0) {
 
-          <small>
-            wants to be your friend
-          </small>
+          friendRequestsList.innerHTML = `
+            <div class="no-requests">
+              No friend requests
+            </div>
+          `;
 
-        </div>
+          return;
 
-        <div class="request-buttons">
-
-          <button
-            class="accept-request"
-          >
-            ✓
-          </button>
-
-          <button
-            class="reject-request"
-          >
-            ✕
-          </button>
-
-        </div>
-      `;
+        }
 
 
-      // ACCEPT
+        snapshot.forEach(
+          requestDoc => {
 
-      item
-        .querySelector(".accept-request")
-        .addEventListener("click", async () => {
-
-          await acceptFriendRequest(
-            requestDoc.id,
-            request
-          );
-
-        });
+            const request =
+              requestDoc.data();
 
 
-      // REJECT
-
-      item
-        .querySelector(".reject-request")
-        .addEventListener("click", async () => {
-
-          await rejectFriendRequest(
-            requestDoc.id
-          );
-
-        });
+            const item =
+              document.createElement(
+                "div"
+              );
 
 
-      friendRequestsList
-        .appendChild(item);
+            item.className =
+              "friend-request";
 
-    });
 
-  });
+            const firstLetter =
+              (
+                request.fromName ||
+                "U"
+              )
+                .charAt(0)
+                .toUpperCase();
+
+
+            item.innerHTML = `
+
+              ${
+                request.fromPhoto
+                  ? `
+                    <img
+                      class="request-avatar"
+                      src="${request.fromPhoto}"
+                    >
+                  `
+                  : `
+                    <div class="request-avatar">
+                      ${firstLetter}
+                    </div>
+                  `
+              }
+
+              <div class="request-info">
+
+                <strong>
+                  ${escapeHTML(
+                    request.fromName ||
+                    "User"
+                  )}
+                </strong>
+
+                <small>
+                  wants to be your friend
+                </small>
+
+              </div>
+
+              <div class="request-buttons">
+
+                <button
+                  class="accept-request"
+                >
+                  ✓
+                </button>
+
+                <button
+                  class="reject-request"
+                >
+                  ✕
+                </button>
+
+              </div>
+
+            `;
+
+
+            item
+              .querySelector(
+                ".accept-request"
+              )
+              .addEventListener(
+                "click",
+                () => {
+
+                  acceptFriendRequest(
+                    requestDoc.id,
+                    request
+                  );
+
+                }
+              );
+
+
+            item
+              .querySelector(
+                ".reject-request"
+              )
+              .addEventListener(
+                "click",
+                () => {
+
+                  rejectFriendRequest(
+                    requestDoc.id
+                  );
+
+                }
+              );
+
+
+            friendRequestsList.appendChild(
+              item
+            );
+
+          }
+        );
+
+      }
+    );
 
 }
 
 
-// ============================================
-// ACCEPT FRIEND REQUEST
-// ============================================
+// ======================================================
+// ACCEPT FRIEND
+// ======================================================
 
 async function acceptFriendRequest(
   requestId,
@@ -1120,16 +1438,18 @@ async function acceptFriendRequest(
 
   if (!auth.currentUser) return;
 
+
   try {
 
     const myUid =
       auth.currentUser.uid;
 
+
     const friendUid =
       request.from;
 
 
-    // Create friendship for ME
+    // Add friend to my list
 
     await setDoc(
       doc(
@@ -1140,16 +1460,30 @@ async function acceptFriendRequest(
         friendUid
       ),
       {
-        uid: friendUid,
-        name: request.fromName || "User",
-        email: request.fromEmail || "",
-        photo: request.fromPhoto || "",
-        addedAt: serverTimestamp()
+
+        uid:
+          friendUid,
+
+        name:
+          request.fromName ||
+          "User",
+
+        email:
+          request.fromEmail ||
+          "",
+
+        photo:
+          request.fromPhoto ||
+          "",
+
+        addedAt:
+          serverTimestamp()
+
       }
     );
 
 
-    // Create friendship for FRIEND
+    // Add me to friend's list
 
     await setDoc(
       doc(
@@ -1160,17 +1494,25 @@ async function acceptFriendRequest(
         myUid
       ),
       {
-        uid: myUid,
+
+        uid:
+          myUid,
+
         name:
           auth.currentUser.displayName ||
           "User",
+
         email:
           auth.currentUser.email ||
           "",
+
         photo:
           auth.currentUser.photoURL ||
           "",
-        addedAt: serverTimestamp()
+
+        addedAt:
+          serverTimestamp()
+
       }
     );
 
@@ -1184,7 +1526,10 @@ async function acceptFriendRequest(
         requestId
       ),
       {
-        status: "accepted"
+
+        status:
+          "accepted"
+
       },
       {
         merge: true
@@ -1193,18 +1538,20 @@ async function acceptFriendRequest(
 
 
     alert(
-      `${request.fromName || "User"} is now your friend!`
+      `${
+        request.fromName ||
+        "User"
+      } is now your friend!`
     );
 
-
-    loadFriends();
 
   } catch (error) {
 
     console.error(
-      "Accept friend request failed:",
+      "Accept friend failed:",
       error
     );
+
 
     alert(
       "Could not accept friend request.\n\n" +
@@ -1216,9 +1563,9 @@ async function acceptFriendRequest(
 }
 
 
-// ============================================
-// REJECT FRIEND REQUEST
-// ============================================
+// ======================================================
+// REJECT FRIEND
+// ======================================================
 
 async function rejectFriendRequest(
   requestId
@@ -1233,7 +1580,10 @@ async function rejectFriendRequest(
         requestId
       ),
       {
-        status: "rejected"
+
+        status:
+          "rejected"
+
       },
       {
         merge: true
@@ -1252,13 +1602,21 @@ async function rejectFriendRequest(
 }
 
 
-// ============================================
-// LOAD FRIENDS INTO SIDEBAR
-// ============================================
+// ======================================================
+// LOAD FRIENDS
+// ======================================================
 
 function loadFriends() {
 
   if (!auth.currentUser) return;
+
+
+  if (friendUnsubscribe) {
+
+    friendUnsubscribe();
+
+  }
+
 
   const friendsRef =
     collection(
@@ -1268,138 +1626,169 @@ function loadFriends() {
       "friends"
     );
 
-  onSnapshot(
-    friendsRef,
-    (snapshot) => {
 
-      const chatList =
-        document.getElementById("chatList");
+  friendUnsubscribe =
+    onSnapshot(
+      friendsRef,
+      snapshot => {
 
-      // Remove previously loaded friends
+        // Remove old Firebase friends
 
-      document
-        .querySelectorAll(".firebase-friend")
-        .forEach((element) => {
-          element.remove();
-        });
-
-
-      snapshot.forEach((friendDoc) => {
-
-        const friend =
-          friendDoc.data();
-
-        const item =
-          document.createElement("div");
-
-        item.className =
-          "chat-item firebase-friend";
-
-        item.dataset.name =
-          friend.name || "User";
-
-        item.dataset.uid =
-          friend.uid;
+        document
+          .querySelectorAll(
+            ".firebase-friend"
+          )
+          .forEach(
+            element =>
+              element.remove()
+          );
 
 
-        const firstLetter =
-          (friend.name || "U")
-            .charAt(0)
-            .toUpperCase();
+        snapshot.forEach(
+          friendDoc => {
+
+            const friend =
+              friendDoc.data();
 
 
-        item.innerHTML = `
-
-          ${
-            friend.photo
-            ?
-            `<img
-              class="chat-avatar"
-              src="${friend.photo}"
-            >`
-            :
-            `<div class="chat-avatar">
-              ${firstLetter}
-            </div>`
-          }
-
-          <div class="chat-info">
-
-            <div class="chat-top">
-
-              <strong>
-                ${escapeHTML(
-                  friend.name || "User"
-                )}
-              </strong>
-
-            </div>
-
-            <div class="chat-bottom">
-
-              <span>
-                Friend
-              </span>
-
-            </div>
-
-          </div>
-        `;
-
-
-        item.addEventListener(
-          "click",
-          () => {
-
-            document
-              .querySelectorAll(".chat-item")
-              .forEach((chat) => {
-                chat.classList.remove("active");
-              });
-
-            item.classList.add("active");
-
-            currentName.textContent =
-              friend.name || "User";
-
-            currentStatus.textContent =
-              "online";
-
-            if (friend.photo) {
-
-              currentAvatar.style.backgroundImage =
-                `url("${friend.photo}")`;
-
-              currentAvatar.style.backgroundSize =
-                "cover";
-
-              currentAvatar.textContent = "";
-
-            } else {
-
-              currentAvatar.style.backgroundImage =
-                "";
-
-              currentAvatar.textContent =
-                firstLetter;
-
-            }
-
-            if (window.innerWidth <= 800) {
-
-              app.classList.add(
-                "mobile-chat"
+            const item =
+              document.createElement(
+                "div"
               );
 
-            }
+
+            item.className =
+              "chat-item firebase-friend";
+
+
+            item.dataset.name =
+              friend.name ||
+              "User";
+
+
+            item.dataset.uid =
+              friend.uid;
+
+
+            const firstLetter =
+              (
+                friend.name ||
+                "U"
+              )
+                .charAt(0)
+                .toUpperCase();
+
+
+            item.innerHTML = `
+
+              ${
+                friend.photo
+                  ? `
+                    <img
+                      class="chat-avatar"
+                      src="${friend.photo}"
+                    >
+                  `
+                  : `
+                    <div class="chat-avatar">
+                      ${firstLetter}
+                    </div>
+                  `
+              }
+
+              <div class="chat-info">
+
+                <div class="chat-top">
+
+                  <strong>
+                    ${escapeHTML(
+                      friend.name ||
+                      "User"
+                    )}
+                  </strong>
+
+                </div>
+
+                <div class="chat-bottom">
+
+                  <span>
+                    🔒 Private chat
+                  </span>
+
+                </div>
+
+              </div>
+
+            `;
+
+
+            item.addEventListener(
+              "click",
+              () => {
+
+                openPrivateChat(
+                  friend
+                );
+
+                item.classList.add(
+                  "active"
+                );
+
+              }
+            );
+
+
+            chatList.appendChild(
+              item
+            );
 
           }
         );
 
+      }
+    );
 
-        chatList.prepend(item);
+}
 
-      });
+
+// ======================================================
+// SEARCH CHAT LIST
+// ======================================================
+
+if (searchInput) {
+
+  searchInput.addEventListener(
+    "input",
+    () => {
+
+      const search =
+        searchInput.value
+          .toLowerCase()
+          .trim();
+
+
+      document
+        .querySelectorAll(
+          ".chat-item"
+        )
+        .forEach(
+          chat => {
+
+            const name =
+              (
+                chat.dataset.name ||
+                chat.textContent
+              )
+                .toLowerCase();
+
+
+            chat.style.display =
+              name.includes(search)
+                ? "flex"
+                : "none";
+
+          }
+        );
 
     }
   );
@@ -1407,20 +1796,209 @@ function loadFriends() {
 }
 
 
-// ============================================
-// START FRIEND SYSTEM AFTER LOGIN
-// ============================================
+// ======================================================
+// MOBILE BACK
+// ======================================================
 
-onAuthStateChanged(auth, (user) => {
+const backBtn =
+  element("backBtn");
 
-  if (user) {
 
-    listenForFriendRequests();
+if (backBtn) {
 
-    loadFriends();
+  backBtn.addEventListener(
+    "click",
+    () => {
 
-    loadPublicMessages();
+      app.classList.remove(
+        "mobile-chat"
+      );
 
-  }
+    }
+  );
 
-});
+}
+
+
+// ======================================================
+// EMOJI
+// ======================================================
+
+const emojiBtn =
+  element("emojiBtn");
+
+
+if (emojiBtn) {
+
+  emojiBtn.addEventListener(
+    "click",
+    () => {
+
+      messageInput.value +=
+        " 😊";
+
+      messageInput.focus();
+
+    }
+  );
+
+}
+
+
+// ======================================================
+// FILE ATTACHMENT
+// ======================================================
+
+const attachBtn =
+  element("attachBtn");
+
+const fileInput =
+  element("fileInput");
+
+
+if (attachBtn && fileInput) {
+
+  attachBtn.addEventListener(
+    "click",
+    () => {
+
+      fileInput.click();
+
+    }
+  );
+
+
+  fileInput.addEventListener(
+    "change",
+    () => {
+
+      const file =
+        fileInput.files?.[0];
+
+
+      if (!file) return;
+
+
+      const attachmentText =
+        `📎 ${file.name}`;
+
+
+      // Put attachment name
+      // into the message box
+
+      messageInput.value =
+        attachmentText;
+
+
+      messageInput.focus();
+
+
+      fileInput.value = "";
+
+    }
+  );
+
+}
+
+
+// ======================================================
+// VOICE INPUT
+// ======================================================
+
+const voiceBtn =
+  element("voiceBtn");
+
+
+if (voiceBtn) {
+
+  voiceBtn.addEventListener(
+    "click",
+    () => {
+
+      const Recognition =
+        window.SpeechRecognition ||
+        window.webkitSpeechRecognition;
+
+
+      if (!Recognition) {
+
+        alert(
+          "Voice input is not supported in this browser."
+        );
+
+        return;
+
+      }
+
+
+      const recognition =
+        new Recognition();
+
+
+      recognition.lang =
+        "en-US";
+
+
+      recognition.start();
+
+
+      recognition.onresult =
+        event => {
+
+          messageInput.value =
+            event.results[0][0]
+              .transcript;
+
+          messageInput.focus();
+
+        };
+
+    }
+  );
+
+}
+
+
+// ======================================================
+// HELPERS
+// ======================================================
+
+function scrollMessages() {
+
+  messages.scrollTo({
+
+    top:
+      messages.scrollHeight,
+
+    behavior:
+      "smooth"
+
+  });
+
+}
+
+
+function escapeHTML(text) {
+
+  const div =
+    document.createElement(
+      "div"
+    );
+
+
+  div.textContent =
+    String(text);
+
+
+  return div.innerHTML;
+
+}
+
+
+// ======================================================
+// START
+// ======================================================
+
+console.log(
+  "💬 Echo Chat loaded successfully!"
+);
