@@ -1,45 +1,103 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#111b21">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <meta
+    name="theme-color"
+    content="#111b21"
+  >
+
+  <meta
+    name="description"
+    content="Echo Chat - Simple, fast and private messaging"
+  >
+
   <title>Echo Chat</title>
 </head>
 
+
 <body>
 
-  <!-- ================= LOGIN ================= -->
+  <!-- =====================================================
+       LOGIN SCREEN
+  ====================================================== -->
 
-  <div id="loginScreen" class="login-screen">
+  <div
+    id="loginScreen"
+    class="login-screen"
+  >
 
     <div class="login-card">
+
+      <!-- LOGO -->
 
       <div class="login-logo">
         <span>💬</span>
       </div>
 
-      <h1>Echo Chat</h1>
+
+      <!-- TITLE -->
+
+      <h1>
+        Echo Chat
+      </h1>
+
 
       <p class="login-subtitle">
         Simple. Fast. Private messaging.
       </p>
 
-      <button id="googleLogin" class="google-login">
-        <span class="google-icon">G</span>
+
+      <!-- GOOGLE LOGIN -->
+
+      <button
+        id="googleLogin"
+        class="google-login"
+        type="button"
+      >
+
+        <span class="google-icon">
+          G
+        </span>
+
         Continue with Google
+
       </button>
 
+
+      <!-- CAPTCHA -->
+
       <div class="captcha-box">
-        <div class="captcha-check">✓</div>
-        <div>
-          <strong>Protected by reCAPTCHA</strong>
-          <small>Privacy · Terms</small>
+
+        <div class="captcha-check">
+          ✓
         </div>
+
+        <div>
+
+          <strong>
+            Protected by reCAPTCHA
+          </strong>
+
+          <small>
+            Privacy · Terms
+          </small>
+
+        </div>
+
       </div>
 
+
       <p class="login-note">
-        By continuing, you agree to the Echo Chat terms.
+        By continuing, you agree to the
+        Echo Chat terms.
       </p>
 
     </div>
@@ -47,80 +105,78 @@
   </div>
 
 
-  <!-- ================= APP ================= -->
 
-  <div id="app" class="app hidden">
+  <!-- =====================================================
+       MAIN APPLICATION
+  ====================================================== -->
 
-    <!-- CHAT SIDEBAR -->
+  <div
+    id="app"
+    class="app hidden"
+  >
+
+
+    <!-- =================================================
+         SIDEBAR
+    ================================================== -->
 
     <aside class="sidebar">
 
-      <div class="friends-section">
 
-  <button id="findFriendsBtn">
-    👥 Find Friends
-  </button>
+      <!-- ===============================================
+           SIDEBAR HEADER / PROFILE
+      ================================================ -->
 
-  <div id="friendSearchPanel" class="friend-search-panel hidden">
-
-    <input
-      id="friendSearchInput"
-      type="text"
-      placeholder="Search by email..."
-      autocomplete="off"
-    >
-
-    <div id="friendSearchResults"></div>
-
-  </div>
-
-</div>
-      <!-- FRIEND REQUESTS -->
-
-<div class="friend-requests-section">
-
-  <button id="friendRequestsBtn" class="friend-requests-btn">
-    🔔 Friend Requests
-    <span id="friendRequestCount" class="request-count hidden">0</span>
-  </button>
-
-  <div id="friendRequestsPanel" class="friend-requests-panel hidden">
-
-    <div class="requests-title">
-      Friend Requests
-    </div>
-
-    <div id="friendRequestsList">
-      <div class="no-requests">
-        No friend requests
-      </div>
-    </div>
-
-  </div>
-
-</div>
       <header class="sidebar-header">
 
         <div class="profile">
 
-          <div class="avatar" id="myAvatar">
-            O
+
+          <!-- MY AVATAR -->
+
+          <div
+            id="myAvatar"
+            class="avatar"
+          >
+            U
           </div>
 
-          <div>
-            <strong id="myName">User</strong>
-            <span>Online</span>
+
+          <!-- USER INFORMATION -->
+
+          <div class="profile-info">
+
+            <strong id="myName">
+              User
+            </strong>
+
+            <span>
+              Online
+            </span>
+
           </div>
 
         </div>
 
+
+        <!-- HEADER BUTTONS -->
+
         <div class="header-buttons">
 
-          <button id="newChatBtn" title="New chat">
+          <button
+            id="newChatBtn"
+            type="button"
+            title="New chat"
+          >
             ＋
           </button>
 
-          <button id="settingsBtn" title="Settings">
+
+          <button
+            id="settingsBtn"
+            type="button"
+            title="Settings"
+          >
             ⚙
           </button>
 
@@ -129,77 +185,307 @@
       </header>
 
 
-      <!-- SEARCH -->
+
+      <!-- =================================================
+           FIND FRIENDS
+      ================================================== -->
+
+      <section class="friends-section">
+
+
+        <button
+          id="findFriendsBtn"
+          class="find-friends-btn"
+          type="button"
+        >
+
+          <span>
+            👥
+          </span>
+
+          <span>
+            Find Friends
+          </span>
+
+        </button>
+
+
+        <!-- FRIEND SEARCH PANEL -->
+
+        <div
+          id="friendSearchPanel"
+          class="friend-search-panel hidden"
+        >
+
+
+          <!-- SEARCH INPUT -->
+
+          <div class="friend-search-box">
+
+            <span>
+              🔍
+            </span>
+
+            <input
+              id="friendSearchInput"
+              type="text"
+              placeholder="Search by name or email..."
+              autocomplete="off"
+            >
+
+          </div>
+
+
+          <!-- SEARCH RESULTS -->
+
+          <div
+            id="friendSearchResults"
+            class="friend-search-results"
+          >
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+
+      <!-- =================================================
+           FRIEND REQUESTS
+      ================================================== -->
+
+      <section class="friend-requests-section">
+
+
+        <button
+          id="friendRequestsBtn"
+          class="friend-requests-btn"
+          type="button"
+        >
+
+          <span>
+            🔔
+          </span>
+
+          <span>
+            Friend Requests
+          </span>
+
+
+          <!-- REQUEST COUNT -->
+
+          <span
+            id="friendRequestCount"
+            class="request-count hidden"
+          >
+            0
+          </span>
+
+        </button>
+
+
+
+        <!-- REQUEST PANEL -->
+
+        <div
+          id="friendRequestsPanel"
+          class="friend-requests-panel hidden"
+        >
+
+
+          <div class="requests-title">
+
+            <span>
+              Friend Requests
+            </span>
+
+          </div>
+
+
+          <!-- REQUEST LIST -->
+
+          <div
+            id="friendRequestsList"
+            class="friend-requests-list"
+          >
+
+            <div class="no-requests">
+              No friend requests
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+
+      <!-- =================================================
+           CHAT SEARCH
+      ================================================== -->
 
       <div class="search-box">
 
-        <span>🔍</span>
+        <span>
+          🔍
+        </span>
+
 
         <input
           id="searchInput"
           type="text"
-          placeholder="Search or start new chat"
+          placeholder="Search or start a chat"
+          autocomplete="off"
         >
 
       </div>
 
 
-      <!-- CHAT LIST -->
-      <div id="publicChatBtn" class="public-chat-btn">
-  🌎 Public Chat
-  <span>Everyone</span>
-</div>
 
-      <div id="chatList" class="chat-list">
+      <!-- =================================================
+           CHAT LIST
+      ================================================== -->
 
-       
+      <div
+        id="chatList"
+        class="chat-list"
+      >
+
+
+        <!-- ===============================================
+             PUBLIC CHAT
+        ================================================ -->
+
+        <div
+          class="chat-item active"
+          data-name="Public Chat"
+          data-chat="public"
+        >
+
+
+          <!-- AVATAR -->
+
+          <div class="chat-avatar group-avatar">
+            🌎
+          </div>
+
+
+          <!-- CHAT INFORMATION -->
+
+          <div class="chat-info">
+
+
+            <div class="chat-top">
+
+              <strong>
+                Public Chat
+              </strong>
+
+              <time>
+                Now
+              </time>
+
+            </div>
+
+
+            <div class="chat-bottom">
+
+              <span>
+                Everyone can chat here
+              </span>
+
+            </div>
 
           </div>
 
         </div>
 
 
-     
- 
+
+        <!--
+          FRIENDS WILL BE INSERTED HERE
+          DYNAMICALLY BY main.js
+        -->
+
+
+      </div>
 
     </aside>
 
 
-    <!-- ================= CHAT ================= -->
+
+    <!-- =====================================================
+         CHAT WINDOW
+    ====================================================== -->
 
     <main class="chat-window">
 
-      <!-- CHAT HEADER -->
+
+      <!-- =================================================
+           CHAT HEADER
+      ================================================== -->
 
       <header class="chat-header">
 
-        <button id="backBtn" class="back-btn">
+
+        <!-- MOBILE BACK BUTTON -->
+
+        <button
+          id="backBtn"
+          class="back-btn"
+          type="button"
+          title="Back"
+        >
           ‹
         </button>
 
-        <div class="current-avatar" id="currentAvatar">
-          A
+
+        <!-- CURRENT CHAT AVATAR -->
+
+        <div
+          id="currentAvatar"
+          class="current-avatar"
+        >
+          🌎
         </div>
+
+
+        <!-- CURRENT CHAT USER -->
 
         <div class="current-user">
 
           <strong id="currentName">
-            Alex
+            Public Chat
           </strong>
 
           <span id="currentStatus">
-            online
+            Everyone
           </span>
 
         </div>
 
+
+        <!-- CHAT ACTIONS -->
+
         <div class="chat-actions">
 
-          <button title="Search">
+
+          <button
+            id="chatSearchBtn"
+            type="button"
+            title="Search messages"
+          >
             🔍
           </button>
 
-          <button title="More">
+
+          <button
+            id="chatMoreBtn"
+            type="button"
+            title="More"
+          >
             ⋮
           </button>
 
@@ -208,98 +494,110 @@
       </header>
 
 
-      <!-- MESSAGES -->
+
+      <!-- =================================================
+           MESSAGES
+      ================================================== -->
 
       <section
         id="messages"
         class="messages"
       >
 
-        <div class="date-divider">
-          <span>Today</span>
-        </div>
+
+        <!--
+          Firebase messages are inserted here
+          by main.js.
+        -->
 
 
-        <div class="message received">
+        <div class="empty-chat-message">
 
-          <div class="bubble">
-            Hey! 👋
-            <span class="message-time">
-              10:40 AM
-            </span>
+          <div class="empty-chat-icon">
+            🌎
           </div>
 
-        </div>
+          <strong>
+            Welcome to Public Chat
+          </strong>
 
-
-        <div class="message sent">
-
-          <div class="bubble">
-            Hey Alex! How are you?
-            <span class="message-time">
-              10:41 AM ✓✓
-            </span>
-          </div>
-
-        </div>
-
-
-        <div class="message received">
-
-          <div class="bubble">
-            I'm great! What are you working on?
-            <span class="message-time">
-              10:42 AM
-            </span>
-          </div>
+          <span>
+            Everyone can chat here.
+          </span>
 
         </div>
 
       </section>
 
 
-      <!-- COMPOSER -->
+
+      <!-- =================================================
+           MESSAGE COMPOSER
+      ================================================== -->
 
       <footer class="composer">
+
+
+        <!-- EMOJI -->
 
         <button
           id="emojiBtn"
           class="composer-btn"
+          type="button"
           title="Emoji"
         >
           😊
         </button>
 
+
+        <!-- ATTACHMENT -->
+
         <button
           id="attachBtn"
           class="composer-btn"
-          title="Attach"
+          type="button"
+          title="Attach file"
         >
           📎
         </button>
+
+
+        <!-- MESSAGE INPUT -->
 
         <input
           id="messageInput"
           type="text"
           placeholder="Type a message"
           autocomplete="off"
+          maxlength="4000"
         >
+
+
+        <!-- VOICE INPUT -->
 
         <button
           id="voiceBtn"
           class="composer-btn voice"
-          title="Voice message"
+          type="button"
+          title="Voice input"
         >
           🎙️
         </button>
 
+
+        <!-- SEND -->
+
         <button
           id="sendBtn"
           class="send-btn"
-          title="Send"
+          type="button"
+          title="Send message"
         >
           ➤
         </button>
+
+
+        <!-- HIDDEN FILE INPUT -->
 
         <input
           id="fileInput"
@@ -314,7 +612,16 @@
   </div>
 
 
-  <script type="module" src="/src/main.js"></script>
+
+  <!-- =====================================================
+       JAVASCRIPT
+  ====================================================== -->
+
+  <script
+    type="module"
+    src="/src/main.js"
+  ></script>
 
 </body>
+
 </html>
