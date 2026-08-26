@@ -122,8 +122,10 @@ await setDoc(
 
     myName.textContent = name;
 
-    currentName.textContent = "Alex";
-    currentStatus.textContent = "online";
+    currentName.textContent = "Public Chat";
+currentStatus.textContent = "Everyone";
+currentAvatar.textContent = "🌎";
+currentAvatar.style.backgroundImage = "";
 
     if (photo) {
 
@@ -638,13 +640,7 @@ function loadPublicMessages() {
 }
 
 
-// ============================================
-// OPEN PUBLIC CHAT BY DEFAULT
-// ============================================
 
-if (auth.currentUser) {
-  loadPublicMessages();
-}
 
 // ============================================
 // FIND FRIENDS
@@ -1422,6 +1418,8 @@ onAuthStateChanged(auth, (user) => {
     listenForFriendRequests();
 
     loadFriends();
+
+    loadPublicMessages();
 
   }
 
