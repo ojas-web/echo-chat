@@ -254,29 +254,36 @@ async function sendMessage() {
     if (currentChatType === "public") {
 
       await addDoc(
-        collection(db, "messages"),
-        {
+  collection(
+    db,
+    "privateChats",
+    chatId,
+    "messages"
+  ),
+  {
+    text: text,
 
-          type: "public",
+    senderId: myUid,
 
-          text: text,
+    senderName:
+      auth.currentUser.displayName ||
+      auth.currentUser.email?.split("@")[0] ||
+      "User",
 
-          senderId:
-            auth.currentUser.uid,
+    senderPhoto:
+      auth.currentUser.photoURL || "",
 
-          senderName:
-            auth.currentUser.displayName ||
-            auth.currentUser.email?.split("@")[0] ||
-            "User",
+    receiverId: friendUid,
 
-          senderPhoto:
-            auth.currentUser.photoURL || "",
+    participants: [
+      myUid,
+      friendUid
+    ],
 
-          createdAt:
-            serverTimestamp()
-
-        }
-      );
+    createdAt:
+      serverTimestamp()
+  }
+);
 
     }
 
